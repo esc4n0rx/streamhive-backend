@@ -1,0 +1,1568 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Streamhive API - Rooms",
+      "description": "API de gerenciamento de salas para o aplicativo de streaming colaborativo Streamhive",
+      "version": "1.0.0",
+      "contact": {
+        "name": "Streamhive Team",
+        "email": "dev@streamhive.com"
+      }
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3000",
+        "description": "Desenvolvimento"
+      },
+      {
+        "url": "https://api.streamhive.com",
+        "description": "Produção"
+      }
+    ],
+    "paths": {
+      "/api/v1/rooms": {
+        "post": {
+          "tags": ["Rooms"],
+          "summary": "Criar nova sala",
+          "description": "Cria uma nova sala de streaming. O usuário autenticado se torna automaticamente o host da sala.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateRoomRequest"
+                },
+                "examples": {
+                  "youtube_public": {
+                    "summary": "Sala pública do YouTube",
+                    "value": {
+                      "name": "Assistindo clássicos do rock",
+                      "description": "Vamos assistir os melhores videoclipes dos anos 80 e 90",
+                      "type": "YOUTUBE_LINK",
+                      "streamUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                      "maxParticipants": 25,
+                      "isPrivate": false
+                    }
+                  },
+                  "external_private": {
+                    "summary": "Sala privada com link externo",
+                    "value": {
+                      "name": "Filme da Noite",
+                      "description": "Sessão privada para assistir nosso filme favorito",
+                      "type": "EXTERNAL_LINK",
+                      "streamUrl": "https://example-streaming.com/movie/123",
+                      "maxParticipants": 10,
+                      "isPrivate": true,
+                      "password": "filme2025"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Sala criada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Room created successfully",
+                    "data": {
+                      "id": "550e8400-e29b-41d4-a716-446655440001",
+                      "name": "Assistindo clássicos do rock",
+                      "description": "Vamos assistir os melhores videoclipes dos anos 80 e 90",
+                      "type": "YOUTUBE_LINK",
+                      "streamUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                      "maxParticipants": 25,
+                      "isPrivate": false,
+                      "hostId": "550e8400-e29b-41d4-a716-446655440000",
+                      "currentParticipants": 0,
+                      "createdAt": "2025-01-15T14:30:00.000Z",
+                      "host": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "João Silva",
+                        "username": "joaosilva",
+                        "avatarUrl": "https://example.com/avatar.jpg"
+                      }
+                    },
+                    "timestamp": "2025-01-15T14:30:00.000Z"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Dados de entrada inválidos",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidationErrorResponse"
+                  },
+                  "examples": {
+                    "invalid_url": {
+                      "summary": "URL inválida",
+                      "value": {
+                        "success": false,
+                        "message": "Invalid YouTube URL format",
+                        "timestamp": "2025-01-15T14:30:00.000Z"
+                      }
+                    },
+                    "validation_errors": {
+                      "summary": "Erros de validação",
+                      "value": {
+                        "success": false,
+                        "message": "Validation failed",
+                        "errors": [
+                          {
+                            "field": "maxParticipants",
+                            "message": "Max participants cannot exceed 50"
+                          },
+                          {
+                            "field": "password",
+                            "message": "Private rooms require a password"
+                          }
+                        ],
+                        "timestamp": "2025-01-15T14:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "429": {
+              "description": "Muitas salas criadas",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Too many rooms created, please try again later.",
+                    "timestamp": "2025-01-15T14:30:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "tags": ["Rooms"],
+          "summary": "Listar salas públicas",
+          "description": "Retorna uma lista paginada de salas públicas ativas",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "Número máximo de salas por página",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "default": 20
+              }
+            },
+            {
+              "name": "offset",
+              "in": "query",
+              "description": "Número de salas para pular",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Lista de salas obtida com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomsListResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Rooms retrieved successfully",
+                    "data": {
+                      "rooms": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440001",
+                          "name": "Assistindo clássicos do rock",
+                          "description": "Vamos assistir os melhores videoclipes dos anos 80 e 90",
+                          "type": "YOUTUBE_LINK",
+                          "maxParticipants": 25,
+                          "currentParticipants": 12,
+                          "isPrivate": false,
+                          "createdAt": "2025-01-15T14:30:00.000Z",
+                          "host": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "name": "João Silva",
+                            "username": "joaosilva",
+                            "avatarUrl": "https://example.com/avatar.jpg"
+                          }
+                        },
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440002",
+                          "name": "Documentários Incríveis",
+                          "description": "Sessão de documentários sobre natureza",
+                          "type": "EXTERNAL_LINK",
+                          "maxParticipants": 15,
+                          "currentParticipants": 8,
+                          "isPrivate": false,
+                          "createdAt": "2025-01-15T13:00:00.000Z",
+                          "host": {
+                            "id": "550e8400-e29b-41d4-a716-446655440003",
+                            "name": "Maria Santos",
+                            "username": "mariasantos",
+                            "avatarUrl": null
+                          }
+                        }
+                      ],
+                      "pagination": {
+                        "limit": 20,
+                        "offset": 0,
+                        "total": 2
+                      }
+                    },
+                    "timestamp": "2025-01-15T15:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "/api/v1/rooms/my-rooms": {
+        "get": {
+          "tags": ["Rooms"],
+          "summary": "Listar minhas salas",
+          "description": "Retorna todas as salas criadas pelo usuário autenticado (como host)",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "Número máximo de salas por página",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "default": 20
+              }
+            },
+            {
+              "name": "offset",
+              "in": "query",
+              "description": "Número de salas para pular",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Minhas salas obtidas com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomsListResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "My rooms retrieved successfully",
+                    "data": {
+                      "rooms": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440001",
+                          "name": "Assistindo clássicos do rock",
+                          "description": "Vamos assistir os melhores videoclipes dos anos 80 e 90",
+                          "type": "YOUTUBE_LINK",
+                          "streamUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                          "maxParticipants": 25,
+                          "currentParticipants": 12,
+                          "isPrivate": false,
+                          "hostId": "550e8400-e29b-41d4-a716-446655440000",
+                          "createdAt": "2025-01-15T14:30:00.000Z",
+                          "updatedAt": "2025-01-15T14:30:00.000Z"
+                        }
+                      ],
+                      "pagination": {
+                        "limit": 20,
+                        "offset": 0,
+                        "total": 1
+                      }
+                    },
+                    "timestamp": "2025-01-15T15:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "/api/v1/rooms/joined": {
+        "get": {
+          "tags": ["Rooms"],
+          "summary": "Listar salas que participo",
+          "description": "Retorna todas as salas onde o usuário autenticado é participante",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "Número máximo de salas por página",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "default": 20
+              }
+            },
+            {
+              "name": "offset",
+              "in": "query",
+              "description": "Número de salas para pular",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Salas participadas obtidas com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomsListResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Joined rooms retrieved successfully",
+                    "data": {
+                      "rooms": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440002",
+                          "name": "Documentários Incríveis",
+                          "description": "Sessão de documentários sobre natureza",
+                          "type": "EXTERNAL_LINK",
+                          "maxParticipants": 15,
+                          "currentParticipants": 8,
+                          "isPrivate": false,
+                          "createdAt": "2025-01-15T13:00:00.000Z",
+                          "host": {
+                            "id": "550e8400-e29b-41d4-a716-446655440003",
+                            "name": "Maria Santos",
+                            "username": "mariasantos",
+                            "avatarUrl": null
+                          }
+                        }
+                      ],
+                      "pagination": {
+                        "limit": 20,
+                        "offset": 0,
+                        "total": 1
+                      }
+                    },
+                    "timestamp": "2025-01-15T15:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "/api/v1/rooms/{id}": {
+        "get": {
+          "tags": ["Rooms"],
+          "summary": "Obter sala por ID",
+          "description": "Retorna os detalhes completos de uma sala específica",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Sala obtida com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Room retrieved successfully",
+                    "data": {
+                      "id": "550e8400-e29b-41d4-a716-446655440001",
+                      "name": "Assistindo clássicos do rock",
+                      "description": "Vamos assistir os melhores videoclipes dos anos 80 e 90",
+                      "type": "YOUTUBE_LINK",
+                      "streamUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                      "maxParticipants": 25,
+                      "currentParticipants": 12,
+                      "isPrivate": false,
+                      "hostId": "550e8400-e29b-41d4-a716-446655440000",
+                      "createdAt": "2025-01-15T14:30:00.000Z",
+                      "updatedAt": "2025-01-15T14:30:00.000Z",
+                      "host": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "João Silva",
+                        "username": "joaosilva",
+                        "avatarUrl": "https://example.com/avatar.jpg"
+                      }
+                    },
+                    "timestamp": "2025-01-15T15:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Acesso negado a sala privada",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Access denied to private room",
+                    "timestamp": "2025-01-15T15:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Sala não encontrada",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Room not found",
+                    "timestamp": "2025-01-15T15:00:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "put": {
+          "tags": ["Rooms"],
+          "summary": "Atualizar sala",
+          "description": "Atualiza os dados de uma sala. Apenas o host pode realizar esta operação.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRoomRequest"
+                },
+                "examples": {
+                  "update_basic": {
+                    "summary": "Atualização básica",
+                    "value": {
+                      "name": "Clássicos do Rock - Edição Especial",
+                      "description": "Agora com mais bandas dos anos 70!",
+                      "maxParticipants": 30
+                    }
+                  },
+                  "change_to_private": {
+                    "summary": "Tornar sala privada",
+                    "value": {
+                      "isPrivate": true,
+                      "password": "rockclassico2025"
+                    }
+                  },
+                  "update_stream": {
+                    "summary": "Alterar URL de streaming",
+                    "value": {
+                      "streamUrl": "https://www.youtube.com/watch?v=newvideo123"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Sala atualizada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Room updated successfully",
+                    "data": {
+                      "id": "550e8400-e29b-41d4-a716-446655440001",
+                      "name": "Clássicos do Rock - Edição Especial",
+                      "description": "Agora com mais bandas dos anos 70!",
+                      "type": "YOUTUBE_LINK",
+                      "streamUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                      "maxParticipants": 30,
+                      "currentParticipants": 12,
+                      "isPrivate": false,
+                      "hostId": "550e8400-e29b-41d4-a716-446655440000",
+                      "createdAt": "2025-01-15T14:30:00.000Z",
+                      "updatedAt": "2025-01-15T15:30:00.000Z",
+                      "host": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "João Silva",
+                        "username": "joaosilva",
+                        "avatarUrl": "https://example.com/avatar.jpg"
+                      }
+                    },
+                    "timestamp": "2025-01-15T15:30:00.000Z"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Dados de entrada inválidos",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidationErrorResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Apenas o host pode atualizar a sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Only room host can update room",
+                    "timestamp": "2025-01-15T15:30:00.000Z"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Sala não encontrada",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "delete": {
+          "tags": ["Rooms"],
+          "summary": "Deletar sala",
+          "description": "Remove uma sala do sistema (soft delete). Apenas o host pode realizar esta operação.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Sala deletada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SuccessResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Room deleted successfully",
+                    "data": null,
+                    "timestamp": "2025-01-15T16:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Apenas o host pode deletar a sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Only room host can delete room",
+                    "timestamp": "2025-01-15T16:00:00.000Z"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Sala não encontrada",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/rooms/{id}/join": {
+        "post": {
+          "tags": ["Participation"],
+          "summary": "Entrar em uma sala",
+          "description": "Adiciona o usuário autenticado como participante da sala",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinRoomRequest"
+                },
+                "examples": {
+                  "public_room": {
+                    "summary": "Entrar em sala pública",
+                    "value": {}
+                  },
+                  "private_room": {
+                    "summary": "Entrar em sala privada",
+                    "value": {
+                      "password": "senha123"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Entrada na sala realizada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ParticipantResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Successfully joined room",
+                    "data": {
+                      "id": "550e8400-e29b-41d4-a716-446655440010",
+                      "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                      "userId": "550e8400-e29b-41d4-a716-446655440000",
+                      "joinedAt": "2025-01-15T16:15:00.000Z",
+                      "isActive": true,
+                      "user": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "João Silva",
+                        "username": "joaosilva",
+                        "avatarUrl": "https://example.com/avatar.jpg"
+                      }
+                    },
+                    "timestamp": "2025-01-15T16:15:00.000Z"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Erro ao entrar na sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "examples": {
+                    "room_full": {
+                      "summary": "Sala lotada",
+                      "value": {
+                        "success": false,
+                        "message": "Room is full",
+                        "timestamp": "2025-01-15T16:15:00.000Z"
+                      }
+                    },
+                    "wrong_password": {
+                      "summary": "Senha incorreta",
+                      "value": {
+                        "success": false,
+                        "message": "Invalid room password",
+                        "timestamp": "2025-01-15T16:15:00.000Z"
+                      }
+                    },
+                    "password_required": {
+                      "summary": "Senha obrigatória",
+                      "value": {
+                        "success": false,
+                        "message": "Password required for private room",
+                        "timestamp": "2025-01-15T16:15:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "404": {
+              "description": "Sala não encontrada",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "409": {
+              "description": "Usuário já está na sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "You are already in this room",
+                    "timestamp": "2025-01-15T16:15:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/rooms/{id}/leave": {
+        "post": {
+          "tags": ["Participation"],
+          "summary": "Sair de uma sala",
+          "description": "Remove o usuário autenticado da lista de participantes da sala",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Saída da sala realizada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SuccessResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Successfully left room",
+                    "data": null,
+                    "timestamp": "2025-01-15T16:30:00.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "/api/v1/rooms/{id}/participants": {
+        "get": {
+          "tags": ["Participation"],
+          "summary": "Listar participantes da sala",
+          "description": "Retorna a lista de participantes ativos de uma sala. Requer acesso à sala.",
+       "security": [
+         {
+           "bearerAuth": []
+         }
+       ],
+       "parameters": [
+         {
+           "name": "id",
+           "in": "path",
+           "required": true,
+           "description": "ID único da sala",
+           "schema": {
+             "type": "string",
+             "format": "uuid"
+           }
+         }
+       ],
+       "responses": {
+         "200": {
+           "description": "Lista de participantes obtida com sucesso",
+           "content": {
+             "application/json": {
+               "schema": {
+                 "$ref": "#/components/schemas/ParticipantsListResponse"
+               },
+               "example": {
+                 "success": true,
+                 "message": "Room participants retrieved successfully",
+                 "data": {
+                   "participants": [
+                     {
+                       "id": "550e8400-e29b-41d4-a716-446655440010",
+                       "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                       "userId": "550e8400-e29b-41d4-a716-446655440000",
+                       "joinedAt": "2025-01-15T14:30:00.000Z",
+                       "isActive": true,
+                       "user": {
+                         "id": "550e8400-e29b-41d4-a716-446655440000",
+                         "name": "João Silva",
+                         "username": "joaosilva",
+                         "avatarUrl": "https://example.com/avatar.jpg"
+                       }
+                     },
+                     {
+                       "id": "550e8400-e29b-41d4-a716-446655440011",
+                       "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                       "userId": "550e8400-e29b-41d4-a716-446655440003",
+                       "joinedAt": "2025-01-15T15:00:00.000Z",
+                       "isActive": true,
+                       "user": {
+                         "id": "550e8400-e29b-41d4-a716-446655440003",
+                         "name": "Maria Santos",
+                         "username": "mariasantos",
+                         "avatarUrl": null
+                       }
+                     }
+                   ]
+                 },
+                 "timestamp": "2025-01-15T16:45:00.000Z"
+               }
+             }
+           }
+         },
+         "401": {
+           "$ref": "#/components/responses/UnauthorizedError"
+         },
+         "403": {
+           "description": "Acesso negado à lista de participantes",
+           "content": {
+             "application/json": {
+               "schema": {
+                 "$ref": "#/components/schemas/ErrorResponse"
+               },
+               "example": {
+                 "success": false,
+                 "message": "Access denied",
+                 "timestamp": "2025-01-15T16:45:00.000Z"
+               }
+             }
+           }
+         }
+       }
+     }
+   },
+   "/api/v1/rooms/{id}/participants/{participantId}": {
+     "delete": {
+       "tags": ["Participation"],
+       "summary": "Remover participante da sala",
+       "description": "Remove um participante específico da sala. Apenas o host pode realizar esta operação.",
+       "security": [
+         {
+           "bearerAuth": []
+         }
+       ],
+       "parameters": [
+         {
+           "name": "id",
+           "in": "path",
+           "required": true,
+           "description": "ID único da sala",
+           "schema": {
+             "type": "string",
+             "format": "uuid"
+           }
+         },
+         {
+           "name": "participantId",
+           "in": "path",
+           "required": true,
+           "description": "ID único do participante a ser removido",
+           "schema": {
+             "type": "string",
+             "format": "uuid"
+           }
+         }
+       ],
+       "responses": {
+         "200": {
+           "description": "Participante removido com sucesso",
+           "content": {
+             "application/json": {
+               "schema": {
+                 "$ref": "#/components/schemas/SuccessResponse"
+               },
+               "example": {
+                 "success": true,
+                 "message": "Participant removed successfully",
+                 "data": null,
+                 "timestamp": "2025-01-15T17:00:00.000Z"
+               }
+             }
+           }
+         },
+         "400": {
+           "description": "Host não pode remover a si mesmo",
+           "content": {
+             "application/json": {
+               "schema": {
+                 "$ref": "#/components/schemas/ErrorResponse"
+               },
+               "example": {
+                 "success": false,
+                 "message": "Host cannot remove themselves from room",
+                 "timestamp": "2025-01-15T17:00:00.000Z"
+               }
+             }
+           }
+         },
+         "401": {
+           "$ref": "#/components/responses/UnauthorizedError"
+         },
+         "403": {
+           "description": "Apenas o host pode remover participantes",
+           "content": {
+             "application/json": {
+               "schema": {
+                 "$ref": "#/components/schemas/ErrorResponse"
+               },
+               "example": {
+                 "success": false,
+                 "message": "Only room host can remove participants",
+                 "timestamp": "2025-01-15T17:00:00.000Z"
+               }
+             }
+           }
+         },
+         "404": {
+           "description": "Sala não encontrada",
+           "content": {
+             "application/json": {
+               "schema": {
+                 "$ref": "#/components/schemas/ErrorResponse"
+               }
+             }
+           }
+         }
+       }
+     }
+   }
+ },
+ "components": {
+   "securitySchemes": {
+     "bearerAuth": {
+       "type": "http",
+       "scheme": "bearer",
+       "bearerFormat": "JWT",
+       "description": "Token JWT obtido através do login"
+     }
+   },
+   "schemas": {
+     "CreateRoomRequest": {
+       "type": "object",
+       "required": ["name", "type", "streamUrl"],
+       "properties": {
+         "name": {
+           "type": "string",
+           "minLength": 1,
+           "maxLength": 100,
+           "description": "Nome da sala"
+         },
+         "description": {
+           "type": "string",
+           "maxLength": 1000,
+           "description": "Descrição detalhada da sala (opcional)"
+         },
+         "type": {
+           "type": "string",
+           "enum": ["YOUTUBE_LINK", "EXTERNAL_LINK"],
+           "description": "Tipo de conteúdo da sala"
+         },
+         "streamUrl": {
+           "type": "string",
+           "format": "uri",
+           "maxLength": 2000,
+           "description": "URL do conteúdo a ser transmitido"
+         },
+         "maxParticipants": {
+           "type": "integer",
+           "minimum": 1,
+           "maximum": 50,
+           "default": 10,
+           "description": "Número máximo de participantes"
+         },
+         "isPrivate": {
+           "type": "boolean",
+           "default": false,
+           "description": "Se a sala é privada (requer senha)"
+         },
+         "password": {
+           "type": "string",
+           "minLength": 4,
+           "maxLength": 50,
+           "description": "Senha para salas privadas (obrigatório se isPrivate=true)"
+         }
+       }
+     },
+     "UpdateRoomRequest": {
+       "type": "object",
+       "properties": {
+         "name": {
+           "type": "string",
+           "minLength": 1,
+           "maxLength": 100,
+           "description": "Nome da sala"
+         },
+         "description": {
+           "type": "string",
+           "maxLength": 1000,
+           "description": "Descrição da sala"
+         },
+         "streamUrl": {
+           "type": "string",
+           "format": "uri",
+           "maxLength": 2000,
+           "description": "URL do conteúdo"
+         },
+         "maxParticipants": {
+           "type": "integer",
+           "minimum": 1,
+           "maximum": 50,
+           "description": "Número máximo de participantes"
+         },
+         "isPrivate": {
+           "type": "boolean",
+           "description": "Se a sala é privada"
+         },
+         "password": {
+           "type": "string",
+           "minLength": 4,
+           "maxLength": 50,
+           "description": "Nova senha (obrigatório se tornando privada)"
+         }
+       }
+     },
+     "JoinRoomRequest": {
+       "type": "object",
+       "properties": {
+         "password": {
+           "type": "string",
+           "maxLength": 50,
+           "description": "Senha da sala (obrigatório para salas privadas)"
+         }
+       }
+     },
+     "Room": {
+       "type": "object",
+       "properties": {
+         "id": {
+           "type": "string",
+           "format": "uuid",
+           "description": "ID único da sala"
+         },
+         "name": {
+           "type": "string",
+           "description": "Nome da sala"
+         },
+         "description": {
+           "type": "string",
+           "nullable": true,
+           "description": "Descrição da sala"
+         },
+         "type": {
+           "type": "string",
+           "enum": ["YOUTUBE_LINK", "EXTERNAL_LINK"],
+           "description": "Tipo de conteúdo"
+         },
+         "streamUrl": {
+           "type": "string",
+           "format": "uri",
+           "description": "URL do conteúdo (apenas para hosts e participantes)"
+         },
+         "maxParticipants": {
+           "type": "integer",
+           "description": "Número máximo de participantes"
+         },
+         "currentParticipants": {
+           "type": "integer",
+           "description": "Número atual de participantes"
+         },
+         "isPrivate": {
+           "type": "boolean",
+           "description": "Se a sala é privada"
+         },
+         "hostId": {
+           "type": "string",
+           "format": "uuid",
+           "description": "ID do host da sala"
+         },
+         "createdAt": {
+           "type": "string",
+           "format": "date-time",
+           "description": "Data de criação"
+         },
+         "updatedAt": {
+           "type": "string",
+           "format": "date-time",
+           "description": "Data da última atualização"
+         },
+         "host": {
+           "$ref": "#/components/schemas/UserBasic"
+         }
+       }
+     },
+     "RoomPublic": {
+       "type": "object",
+       "description": "Versão pública da sala (sem streamUrl para não-participantes)",
+       "properties": {
+         "id": {
+           "type": "string",
+           "format": "uuid"
+         },
+         "name": {
+           "type": "string"
+         },
+         "description": {
+           "type": "string",
+           "nullable": true
+         },
+         "type": {
+           "type": "string",
+           "enum": ["YOUTUBE_LINK", "EXTERNAL_LINK"]
+         },
+         "maxParticipants": {
+           "type": "integer"
+         },
+         "currentParticipants": {
+           "type": "integer"
+         },
+         "isPrivate": {
+           "type": "boolean"
+         },
+         "createdAt": {
+           "type": "string",
+           "format": "date-time"
+         },
+         "host": {
+           "$ref": "#/components/schemas/UserBasic"
+         }
+       }
+     },
+     "Participant": {
+       "type": "object",
+       "properties": {
+         "id": {
+           "type": "string",
+           "format": "uuid",
+           "description": "ID da participação"
+         },
+         "roomId": {
+           "type": "string",
+           "format": "uuid",
+           "description": "ID da sala"
+         },
+         "userId": {
+           "type": "string",
+           "format": "uuid",
+           "description": "ID do usuário"
+         },
+         "joinedAt": {
+           "type": "string",
+           "format": "date-time",
+           "description": "Data que entrou na sala"
+         },
+         "isActive": {
+           "type": "boolean",
+           "description": "Se a participação está ativa"
+         },
+         "user": {
+           "$ref": "#/components/schemas/UserBasic"
+         }
+       }
+     },
+     "UserBasic": {
+       "type": "object",
+       "description": "Informações básicas do usuário",
+       "properties": {
+         "id": {
+           "type": "string",
+           "format": "uuid"
+         },
+         "name": {
+           "type": "string"
+         },
+         "username": {
+           "type": "string"
+         },
+         "avatarUrl": {
+           "type": "string",
+           "format": "uri",
+           "nullable": true
+         }
+       }
+     },
+     "RoomResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": true
+         },
+         "message": {
+           "type": "string"
+         },
+         "data": {
+           "$ref": "#/components/schemas/Room"
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     },
+     "RoomsListResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": true
+         },
+         "message": {
+           "type": "string"
+         },
+         "data": {
+           "type": "object",
+           "properties": {
+             "rooms": {
+               "type": "array",
+               "items": {
+                 "oneOf": [
+                   {
+                     "$ref": "#/components/schemas/Room"
+                   },
+                   {
+                     "$ref": "#/components/schemas/RoomPublic"
+                   }
+                 ]
+               }
+             },
+             "pagination": {
+               "$ref": "#/components/schemas/Pagination"
+             }
+           }
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     },
+     "ParticipantResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": true
+         },
+         "message": {
+           "type": "string"
+         },
+         "data": {
+           "$ref": "#/components/schemas/Participant"
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     },
+     "ParticipantsListResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": true
+         },
+         "message": {
+           "type": "string"
+         },
+         "data": {
+           "type": "object",
+           "properties": {
+             "participants": {
+               "type": "array",
+               "items": {
+                 "$ref": "#/components/schemas/Participant"
+               }
+             }
+           }
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     },
+     "Pagination": {
+       "type": "object",
+       "properties": {
+         "limit": {
+           "type": "integer",
+           "description": "Número de itens por página"
+         },
+         "offset": {
+           "type": "integer",
+           "description": "Número de itens ignorados"
+         },
+         "total": {
+           "type": "integer",
+           "description": "Total de itens retornados"
+         }
+       }
+     },
+     "SuccessResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": true
+         },
+         "message": {
+           "type": "string"
+         },
+         "data": {
+           "nullable": true
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     },
+     "ErrorResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": false
+         },
+         "message": {
+           "type": "string"
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     },
+     "ValidationErrorResponse": {
+       "type": "object",
+       "properties": {
+         "success": {
+           "type": "boolean",
+           "example": false
+         },
+         "message": {
+           "type": "string",
+           "example": "Validation failed"
+         },
+         "errors": {
+           "type": "array",
+           "items": {
+             "type": "object",
+             "properties": {
+               "field": {
+                 "type": "string",
+                 "description": "Campo que falhou na validação"
+               },
+               "message": {
+                 "type": "string",
+                 "description": "Mensagem de erro específica"
+               }
+             }
+           }
+         },
+         "timestamp": {
+           "type": "string",
+           "format": "date-time"
+         }
+       }
+     }
+   },
+   "responses": {
+     "UnauthorizedError": {
+       "description": "Token de acesso inválido ou ausente",
+       "content": {
+         "application/json": {
+           "schema": {
+             "$ref": "#/components/schemas/ErrorResponse"
+           },
+           "examples": {
+             "missing_token": {
+               "summary": "Token ausente",
+               "value": {
+                 "success": false,
+                 "message": "Access token is required",
+                 "timestamp": "2025-01-15T10:30:00.000Z"
+               }
+             },
+             "invalid_token": {
+               "summary": "Token inválido",
+               "value": {
+                 "success": false,
+                 "message": "Invalid token",
+                 "timestamp": "2025-01-15T10:30:00.000Z"
+               }
+             },
+             "expired_token": {
+               "summary": "Token expirado",
+               "value": {
+                 "success": false,
+                 "message": "Token expired",
+                 "timestamp": "2025-01-15T10:30:00.000Z"
+               }
+             }
+           }
+         }
+       }
+     }
+   }
+ },
+ "tags": [
+   {
+     "name": "Rooms",
+     "description": "Endpoints para gerenciamento de salas de streaming"
+   },
+   {
+     "name": "Participation",
+     "description": "Endpoints para participação em salas (entrar, sair, gerenciar participantes)"
+   }
+ ]
+}

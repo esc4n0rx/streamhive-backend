@@ -9,16 +9,17 @@ const { errorHandler, notFoundHandler } = require('./presentation/middlewares/er
 
 // Routes
 const authRoutes = require('./presentation/routes/auth-routes');
+const roomRoutes = require('./presentation/routes/room-routes');
 
 const app = express();
 
 // Configurações de segurança
 app.use(helmet());
 
-// Rate limiting
+// Rate limiting geral
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // máximo 100 requests por IP por janela
+    max: 200, // máximo 200 requests por IP por janela (aumentado)
     message: {
         success: false,
         message: 'Too many requests from this IP, please try again later.',
@@ -31,7 +32,7 @@ app.use(limiter);
 // Rate limiting específico para auth
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 10, // máximo 10 tentativas de auth por IP por janela
+    max: 20, // máximo 20 tentativas de auth por IP por janela (aumentado)
     message: {
         success: false,
         message: 'Too many authentication attempts, please try again later.',
@@ -73,6 +74,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/v1/auth', authLimiter, authRoutes);
+app.use('/api/v1/rooms', roomRoutes); // Removido rate limiting global
 
 // Error handlers
 app.use(notFoundHandler);
