@@ -1,0 +1,1623 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Streamhive API - Streaming",
+      "description": "API de streaming sincronizado para o aplicativo de streaming colaborativo Streamhive. Inclui endpoints REST para gerenciamento de estado e WebSocket para sincronização em tempo real.",
+      "version": "1.0.0",
+      "contact": {
+        "name": "Streamhive Team",
+        "email": "dev@streamhive.com"
+      }
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3000",
+        "description": "Desenvolvimento"
+      },
+      {
+        "url": "https://api.streamhive.com",
+        "description": "Produção"
+      }
+    ],
+    "paths": {
+      "/api/v1/streaming/rooms/{roomId}/state": {
+        "get": {
+          "tags": ["Room State"],
+          "summary": "Obter estado atual da sala",
+          "description": "Retorna o estado atual do streaming de uma sala, incluindo posição do vídeo, status de reprodução e metadados.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "roomId",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Estado da sala obtido com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomStateResponse"
+                  },
+                  "examples": {
+                    "youtube_playing": {
+                      "summary": "YouTube vídeo em reprodução",
+                      "value": {
+                        "success": true,
+                        "message": "Room state retrieved successfully",
+                        "data": {
+                          "id": "550e8400-e29b-41d4-a716-446655440010",
+                          "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                          "videoPosition": 125.5,
+                          "isPlaying": true,
+                          "videoDuration": 180.0,
+                          "lastUpdated": "2025-01-15T16:30:00.000Z",
+                          "updatedBy": "550e8400-e29b-41d4-a716-446655440000",
+                          "syncTimestamp": 1705339800000
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    },
+                    "paused_state": {
+                      "summary": "Vídeo pausado",
+                      "value": {
+                        "success": true,
+                        "message": "Room state retrieved successfully",
+                        "data": {
+                          "id": "550e8400-e29b-41d4-a716-446655440010",
+                          "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                          "videoPosition": 67.2,
+                          "isPlaying": false,
+                          "videoDuration": 240.0,
+                          "lastUpdated": "2025-01-15T16:25:00.000Z",
+                          "updatedBy": "550e8400-e29b-41d4-a716-446655440003"
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Acesso negado à sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Access denied to room",
+                    "timestamp": "2025-01-15T16:30:00.000Z"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Sala não encontrada",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "put": {
+          "tags": ["Room State"],
+          "summary": "Atualizar estado da sala",
+          "description": "Atualiza o estado do streaming da sala. Este endpoint é normalmente usado pelo WebSocket, mas pode ser chamado diretamente.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "roomId",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRoomStateRequest"
+                },
+                "examples": {
+                  "play_video": {
+                    "summary": "Reproduzir vídeo",
+                    "value": {
+                      "eventType": "play",
+                      "videoPosition": 45.3,
+                      "isPlaying": true,
+                      "videoDuration": 180.0,
+                      "eventData": {
+                        "userAction": true
+                      }
+                    }
+                  },
+                  "pause_video": {
+                    "summary": "Pausar vídeo",
+                    "value": {
+                      "eventType": "pause",
+                      "videoPosition": 67.8,
+                      "isPlaying": false,
+                      "videoDuration": 180.0
+                    }
+                  },
+                  "seek_video": {
+                    "summary": "Pular para posição específica",
+                    "value": {
+                      "eventType": "seek",
+                      "videoPosition": 120.0,
+                      "isPlaying": true,
+                      "videoDuration": 180.0,
+                      "eventData": {
+                        "fromPosition": 67.8,
+                        "toPosition": 120.0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Estado atualizado com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RoomStateResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Dados inválidos",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidationErrorResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Acesso negado à sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/streaming/rooms/{roomId}/sync": {
+        "post": {
+          "tags": ["Synchronization"],
+          "summary": "Sincronizar participante",
+          "description": "Sincroniza um participante com o estado atual da sala. Usado quando um usuário entra na sala ou solicita ressincronização.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "roomId",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Sincronização realizada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SyncResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Participant synchronized successfully",
+                    "data": {
+                      "id": "550e8400-e29b-41d4-a716-446655440010",
+                      "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                      "videoPosition": 127.8,
+                      "isPlaying": true,
+                      "videoDuration": 180.0,
+                      "lastUpdated": "2025-01-15T16:30:00.000Z",
+                      "updatedBy": "550e8400-e29b-41d4-a716-446655440000",
+                      "syncTimestamp": 1705339802350
+                    },
+                    "timestamp": "2025-01-15T16:30:02.350Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Acesso negado à sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/streaming/rooms/{roomId}/events": {
+        "get": {
+          "tags": ["Events"],
+          "summary": "Obter eventos de streaming",
+          "description": "Retorna o histórico recente de eventos de streaming de uma sala para debug e analytics.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "roomId",
+              "in": "path",
+              "required": true,
+              "description": "ID único da sala",
+              "schema": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "Número máximo de eventos",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "default": 50
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Eventos obtidos com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/EventsResponse"
+                  },
+                  "example": {
+                    "success": true,
+                    "message": "Streaming events retrieved successfully",
+                    "data": {
+                      "events": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440020",
+                          "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "eventType": "play",
+                          "eventData": {
+                            "position": 45.3,
+                            "isPlaying": true,
+                            "userAction": true
+                          },
+                          "timestamp": "2025-01-15T16:30:00.000Z",
+                          "user": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "name": "João Silva",
+                            "username": "joaosilva"
+                          }
+                        },
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440021",
+                          "roomId": "550e8400-e29b-41d4-a716-446655440001",
+                          "userId": "550e8400-e29b-41d4-a716-446655440003",
+                          "eventType": "join",
+                          "eventData": {
+                            "syncPosition": 45.3
+                          },
+                          "timestamp": "2025-01-15T16:29:30.000Z",
+                          "user": {
+                            "id": "550e8400-e29b-41d4-a716-446655440003",
+                            "name": "Maria Santos",
+                            "username": "mariasantos"
+                          }
+                        }
+                      ]
+                    },
+                    "timestamp": "2025-01-15T16:30:15.000Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "403": {
+              "description": "Acesso negado à sala",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/streaming/validate-url": {
+        "post": {
+          "tags": ["Validation"],
+          "summary": "Validar URL de streaming",
+          "description": "Valida se uma URL é adequada para streaming, verificando formato e acessibilidade.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateUrlRequest"
+                },
+                "examples": {
+                  "youtube_url": {
+                    "summary": "URL do YouTube",
+                    "value": {
+                      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                      "type": "YOUTUBE_LINK"
+                    }
+                  },
+                  "external_https": {
+                    "summary": "Link externo HTTPS",
+                    "value": {
+                      "url": "https://example.com/video.mp4",
+                      "type": "EXTERNAL_LINK"
+                    }
+                  },
+                  "external_http": {
+                    "summary": "Link externo HTTP",
+                    "value": {
+                      "url": "http://example.com/stream.m3u8",
+                      "type": "EXTERNAL_LINK"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "URL validada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidationResponse"
+                  },
+                  "examples": {
+                    "youtube_valid": {
+                      "summary": "YouTube URL válida",
+                      "value": {
+                        "success": true,
+                        "message": "Stream URL validated successfully",
+                        "data": {
+                          "isValid": true,
+                          "videoId": "dQw4w9WgXcQ",
+                          "embedUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+                          "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    },
+                    "external_valid": {
+                      "summary": "URL externa válida",
+                      "value": {
+                        "success": true,
+                        "message": "Stream URL validated successfully",
+                        "data": {
+                          "isValid": true,
+                          "contentType": "video/mp4",
+                          "isVideo": true,
+                          "needsProxy": false,
+                          "originalUrl": "https://example.com/video.mp4"
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    },
+                    "http_needs_proxy": {
+                      "summary": "URL HTTP que precisa de proxy",
+                      "value": {
+                        "success": true,
+                        "message": "Stream URL validated successfully",
+                        "data": {
+                          "isValid": true,
+                          "contentType": "video/mp4",
+                          "isVideo": true,
+                          "needsProxy": true,
+                          "originalUrl": "http://example.com/video.mp4"
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "URL inválida",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "examples": {
+                    "invalid_youtube": {
+                      "summary": "URL do YouTube inválida",
+                      "value": {
+                        "success": false,
+                        "message": "Invalid YouTube URL format",
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    },
+                    "unreachable_url": {
+                      "summary": "URL inacessível",
+                      "value": {
+                        "success": false,
+                        "message": "Unable to validate external URL: Request timeout",
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "/api/v1/streaming/metadata": {
+        "get": {
+          "tags": ["Metadata"],
+          "summary": "Obter metadados do vídeo",
+          "description": "Obtém metadados de um vídeo como título, duração e informações de embed.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "url",
+              "in": "query",
+              "required": true,
+              "description": "URL do vídeo",
+              "schema": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            {
+              "name": "type",
+              "in": "query",
+              "required": true,
+              "description": "Tipo de conteúdo",
+              "schema": {
+                "type": "string",
+                "enum": ["YOUTUBE_LINK", "EXTERNAL_LINK"]
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Metadados obtidos com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MetadataResponse"
+                  },
+                  "examples": {
+                    "youtube_metadata": {
+                      "summary": "Metadados do YouTube",
+                      "value": {
+                        "success": true,
+                        "message": "Video metadata retrieved successfully",
+                        "data": {
+                          "type": "YOUTUBE_LINK",
+                          "videoId": "dQw4w9WgXcQ",
+                          "embedUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+                          "title": "YouTube Video dQw4w9WgXcQ",
+                          "duration": null
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    },
+                    "external_metadata": {
+                      "summary": "Metadados de link externo",
+                      "value": {
+                        "success": true,
+                        "message": "Video metadata retrieved successfully",
+                        "data": {
+                          "type": "EXTERNAL_LINK",
+                          "originalUrl": "https://example.com/video.mp4",
+                          "contentType": "video/mp4",
+                          "needsProxy": false,
+                          "isVideo": true,
+                          "title": "video.mp4"
+                        },
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Parâmetros inválidos",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            }
+          }
+        }
+      },
+      "/api/v1/streaming/proxy": {
+        "get": {
+          "tags": ["Proxy"],
+          "summary": "Proxy para conteúdo HTTP",
+          "description": "Faz proxy de conteúdo HTTP para evitar problemas de mixed content. Usado automaticamente para URLs HTTP.",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "url",
+              "in": "query",
+              "required": true,
+              "description": "URL HTTP para fazer proxy",
+              "schema": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^http://.*"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Conteúdo retornado via proxy",
+              "content": {
+                "video/*": {
+                  "schema": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "audio/*": {
+                  "schema": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "headers": {
+                "Content-Type": {
+                  "description": "Tipo de conteúdo original",
+                  "schema": {
+                    "type": "string"
+                  }
+                },
+                "Content-Length": {
+                  "description": "Tamanho do conteúdo",
+                  "schema": {
+                    "type": "integer"
+                  }
+                },
+                "Accept-Ranges": {
+                  "description": "Suporte a requisições de range",
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "URL inválida para proxy",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "examples": {
+                    "not_http": {
+                      "summary": "URL não é HTTP",
+                      "value": {
+                        "success": false,
+                        "message": "Only HTTP URLs can be proxied",
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    },
+                    "unsupported_content": {
+                      "summary": "Tipo de conteúdo não suportado",
+                      "value": {
+                        "success": false,
+                        "message": "Unsupported content type for proxying",
+                        "timestamp": "2025-01-15T16:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "$ref": "#/components/responses/UnauthorizedError"
+            },
+            "500": {
+              "description": "Erro no proxy",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  },
+                  "example": {
+                    "success": false,
+                    "message": "Proxy error occurred",
+                    "timestamp": "2025-01-15T16:30:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "bearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT",
+          "description": "Token JWT obtido através do login"
+        }
+      },
+      "schemas": {
+        "RoomState": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID único do estado"
+            },
+            "roomId": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID da sala"
+            },
+            "videoPosition": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Posição atual do vídeo em segundos"
+            },
+            "isPlaying": {
+              "type": "boolean",
+              "description": "Se o vídeo está em reprodução"
+            },
+            "videoDuration": {
+              "type": "number",
+              "minimum": 0,
+              "nullable": true,
+              "description": "Duração total do vídeo em segundos"
+            },
+            "lastUpdated": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Última atualização do estado"
+            },
+            "updatedBy": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID do usuário que fez a última atualização"
+            },
+            "syncTimestamp": {
+              "type": "integer",
+              "description": "Timestamp para sincronização (apenas em respostas de sync)"
+            }
+          }
+        },
+        "UpdateRoomStateRequest": {
+          "type": "object",
+          "required": ["eventType", "videoPosition", "isPlaying"],
+          "properties": {
+            "eventType": {
+              "type": "string",
+              "enum": ["play", "pause", "seek", "sync"],
+              "description": "Tipo de evento de controle"
+            },
+            "videoPosition": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Posição atual do vídeo em segundos"
+            },
+            "isPlaying": {
+              "type": "boolean",
+              "description": "Status de reprodução"
+            },
+            "videoDuration": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Duração total do vídeo"
+            },
+            "eventData": {
+              "type": "object",
+              "description": "Dados adicionais específicos do evento",
+              "additionalProperties": true
+            }
+          }
+        },
+        "ValidateUrlRequest": {
+          "type": "object",
+          "required": ["url", "type"],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL para validar"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["YOUTUBE_LINK", "EXTERNAL_LINK"],
+              "description": "Tipo de conteúdo"
+            }
+          }
+        },
+        "StreamingEvent": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "roomId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "userId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "eventType": {
+              "type": "string",
+              "enum": ["play", "pause", "seek", "join", "leave", "sync"]
+            },
+            "eventData": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "user": {
+              "$ref": "#/components/schemas/UserBasic"
+            }
+          }
+        },
+        "UserBasic": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            }
+          }
+        },
+        "RoomStateResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string"
+            },
+            "data": {
+              "$ref": "#/components/schemas/RoomState"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "SyncResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string"
+            },
+            "data": {
+              "$ref": "#/components/schemas/RoomState"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "EventsResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "events": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StreamingEvent"
+                  }
+                }
+              }
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "ValidationResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string"
+            },
+            "data": {
+              "type": "object",
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/YouTubeValidation"
+                },
+                {
+                  "$ref": "#/components/schemas/ExternalValidation"
+                }
+              ]
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "MetadataResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": true
+            },
+            "message": {
+              "type": "string"
+            },
+            "data": {
+              "type": "object",
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/YouTubeMetadata"
+                },
+                {
+                  "$ref": "#/components/schemas/ExternalMetadata"
+                }
+              ]
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "YouTubeValidation": {
+          "type": "object",
+          "properties": {
+            "isValid": {
+              "type": "boolean",
+              "example": true
+            },
+            "videoId": {
+              "type": "string",
+              "description": "ID único do vídeo do YouTube"
+            },
+            "embedUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL para embed do YouTube"
+            },
+            "originalUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL original fornecida"
+            }
+          }
+        },
+        "ExternalValidation": {
+          "type": "object",
+          "properties": {
+            "isValid": {
+              "type": "boolean",
+              "example": true
+            },
+            "contentType": {
+              "type": "string",
+              "description": "Content-Type do recurso"
+            },
+            "isVideo": {
+              "type": "boolean",
+              "description": "Se o conteúdo é um vídeo"
+            },
+            "needsProxy": {
+              "type": "boolean",
+              "description": "Se precisa de proxy (URLs HTTP)"
+            },
+            "originalUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL original fornecida"
+            }
+          }
+        },
+        "YouTubeMetadata": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["YOUTUBE_LINK"]
+            },
+            "videoId": {
+              "type": "string"
+            },
+            "embedUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "title": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "number",
+              "nullable": true,
+              "description": "Duração em segundos (obtida pelo frontend)"
+            }
+          }
+        },
+        "ExternalMetadata": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["EXTERNAL_LINK"]
+            },
+            "originalUrl": {
+              "type": "string",
+              "format": "uri"
+            },
+            "contentType": {
+              "type": "string"
+            },
+            "needsProxy": {
+              "type": "boolean"
+            },
+            "isVideo": {
+              "type": "boolean"
+            },
+            "title": {
+              "type": "string"
+            }
+          }
+        },
+        "ErrorResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": false
+            },
+            "message": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "ValidationErrorResponse": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "example": false
+            },
+            "message": {
+              "type": "string",
+              "example": "Validation failed"
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "field": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      },
+      "responses": {
+        "UnauthorizedError": {
+          "description": "Token de acesso inválido ou ausente",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              "examples": {
+                "missing_token": {
+                  "summary": "Token ausente",
+                  "value": {
+                    "success": false,
+                    "message": "Access token is required",
+                    "timestamp": "2025-01-15T16:30:00.000Z"
+                  }
+                },
+                "invalid_token": {
+                  "summary": "Token inválido",
+                  "value": {
+                    "success": false,
+                    "message": "Invalid token",
+                    "timestamp": "2025-01-15T16:30:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tags": [
+      {
+        "name": "Room State",
+        "description": "Gerenciamento do estado de streaming das salas"
+      },
+      {
+        "name": "Synchronization",
+        "description": "Sincronização de participantes com o estado da sala"
+      },
+      {
+        "name": "Events",
+        "description": "Histórico e logs de eventos de streaming"
+      },
+      {
+        "name": "Validation",
+        "description": "Validação de URLs de streaming"
+      },
+      {
+        "name": "Metadata",
+        "description": "Obtenção de metadados de vídeos"
+      },
+      {
+        "name": "Proxy",
+        "description": "Proxy para conteúdo HTTP"
+      }
+    ],
+    "x-websocket-events": {
+      "description": "Eventos WebSocket para comunicação em tempo real. Conecte em: ws://localhost:3000/streaming",
+      "connection": {
+        "url": "ws://localhost:3000/streaming",
+        "auth": {
+          "type": "bearer",
+          "description": "Envie o token JWT no handshake: { auth: { token: 'your-jwt-token' } }"
+        }
+      },
+      "client-events": {
+        "join-room": {
+          "description": "Entrar em uma sala para começar a receber eventos",
+          "payload": {
+            "roomId": "string (uuid) - ID da sala"
+          },
+          "example": {
+            "roomId": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "responses": [
+            "room-state",
+            "user-joined (para outros)",
+            "error"
+          ]
+        },
+        "leave-room": {
+          "description": "Sair de uma sala",
+          "payload": {
+            "roomId": "string (uuid) - ID da sala"
+          },
+          "example": {
+            "roomId": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "responses": [
+            "user-left (para outros)"
+          ]
+        },
+        "video-play": {
+          "description": "Reproduzir vídeo",
+          "payload": {
+            "roomId": "string (uuid) - ID da sala",
+            "videoPosition": "number - Posição em segundos",
+            "isPlaying": "boolean - true",
+            "videoDuration": "number - Duração total (opcional)",
+            "eventData": "object - Dados adicionais (opcional)"
+          },
+          "example": {
+            "roomId": "550e8400-e29b-41d4-a716-446655440001",
+            "videoPosition": 45.3,
+            "isPlaying": true,
+            "videoDuration": 180.0,
+            "eventData": {
+              "userAction": true
+            }
+          },
+          "responses": [
+            "video-play (para outros)",
+            "event-confirmed",
+            "error"
+          ]
+        },
+        "video-pause": {
+          "description": "Pausar vídeo",
+          "payload": {
+            "roomId": "string (uuid)",
+            "videoPosition": "number",
+            "isPlaying": "boolean - false",
+            "videoDuration": "number (opcional)",
+            "eventData": "object (opcional)"
+          },
+          "example": {
+            "roomId": "550e8400-e29b-41d4-a716-446655440001",
+            "videoPosition": 67.8,
+            "isPlaying": false,
+            "videoDuration": 180.0
+          },
+          "responses": [
+            "video-pause (para outros)",
+            "event-confirmed",
+            "error"
+          ]
+        },
+        "video-seek": {
+          "description": "Pular para posição específica",
+          "payload": {
+            "roomId": "string (uuid)",
+            "videoPosition": "number - Nova posição",
+            "isPlaying": "boolean",
+            "videoDuration": "number (opcional)",
+            "eventData": {
+              "fromPosition": "number - Posição anterior (opcional)"
+            }
+          },
+          "example": {
+            "roomId": "550e8400-e29b-41d4-a716-446655440001",
+            "videoPosition": 120.0,
+            "isPlaying": true,
+            "videoDuration": 180.0,
+            "eventData": {
+              "fromPosition": 67.8
+            }
+          },
+          "responses": [
+            "video-seek (para outros)",
+            "event-confirmed",
+            "error"
+          ]
+        },
+        "request-sync": {
+          "description": "Solicitar sincronização com o estado atual",
+          "payload": {
+            "roomId": "string (uuid)"
+          },
+          "example": {
+            "roomId": "550e8400-e29b-41d4-a716-446655440001"
+          },
+          "responses": [
+            "sync-response",
+            "error"
+          ]
+        },
+        "heartbeat": {
+          "description": "Manter conexão ativa",
+          "payload": {},
+          "responses": [
+            "heartbeat-response"
+          ]
+        }
+      },
+      "server-events": {
+        "room-state": {
+          "description": "Estado atual da sala (enviado ao entrar ou sincronizar)",
+          "payload": {
+            "id": "string (uuid)",
+            "roomId": "string (uuid)",
+            "videoPosition": "number",
+            "isPlaying": "boolean",
+            "videoDuration": "number | null",
+            "lastUpdated": "string (ISO date)",
+            "updatedBy": "string (uuid)",
+            "syncTimestamp": "number - Timestamp para sincronização"
+          },
+          "example": {
+            "id": "550e8400-e29b-41d4-a716-446655440010",
+            "roomId": "550e8400-e29b-41d4-a716-446655440001",
+            "videoPosition": 127.8,
+            "isPlaying": true,
+            "videoDuration": 180.0,
+            "lastUpdated": "2025-01-15T16:30:00.000Z",
+            "updatedBy": "550e8400-e29b-41d4-a716-446655440000",
+            "syncTimestamp": 1705339802350
+          }
+        },
+        "video-play": {
+          "description": "Vídeo foi reproduzido por outro usuário",
+          "payload": {
+            "videoPosition": "number",
+            "isPlaying": "boolean - true",
+            "videoDuration": "number | null",
+            "user": "object - Usuário que executou a ação",
+            "timestamp": "number - Timestamp do evento"
+          },
+          "example": {
+            "videoPosition": 45.3,
+            "isPlaying": true,
+            "videoDuration": 180.0,
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440000",
+              "username": "joaosilva",
+              "name": "João Silva"
+            },
+            "timestamp": 1705339800000
+          }
+        },
+        "video-pause": {
+          "description": "Vídeo foi pausado por outro usuário",
+          "payload": {
+            "videoPosition": "number",
+            "isPlaying": "boolean - false",
+            "videoDuration": "number | null",
+            "user": "object",
+            "timestamp": "number"
+          },
+          "example": {
+            "videoPosition": 67.8,
+            "isPlaying": false,
+            "videoDuration": 180.0,
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "username": "mariasantos",
+              "name": "Maria Santos"
+            },
+            "timestamp": 1705339850000
+          }
+        },
+        "video-seek": {
+          "description": "Outro usuário pulou para posição diferente",
+          "payload": {
+            "videoPosition": "number - Nova posição",
+            "isPlaying": "boolean",
+            "videoDuration": "number | null",
+            "user": "object",
+            "timestamp": "number",
+            "fromPosition": "number - Posição anterior (opcional)"
+          },
+          "example": {
+            "videoPosition": 120.0,
+            "isPlaying": true,
+            "videoDuration": 180.0,
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440000",
+              "username": "joaosilva",
+              "name": "João Silva"
+            },
+            "timestamp": 1705339900000,
+            "fromPosition": 67.8
+          }
+        },
+        "user-joined": {
+          "description": "Novo usuário entrou na sala",
+          "payload": {
+            "user": "object - Informações do usuário",
+            "timestamp": "number"
+          },
+          "example": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "username": "mariasantos",
+              "name": "Maria Santos"
+            },
+            "timestamp": 1705339950000
+          }
+        },
+        "user-left": {
+          "description": "Usuário saiu da sala",
+          "payload": {
+            "user": "object",
+            "timestamp": "number",
+            "reason": "string - Motivo da saída (opcional)"
+          },
+          "example": {
+            "user": {
+              "id": "550e8400-e29b-41d4-a716-446655440003",
+              "username": "mariasantos",
+              "name": "Maria Santos"
+            },
+            "timestamp": 1705340000000,
+            "reason": "client namespace disconnect"
+          }
+        },
+        "event-confirmed": {
+          "description": "Confirmação de que evento foi processado",
+          "payload": {
+            "eventType": "string - Tipo do evento",
+            "timestamp": "number",
+            "state": "object - Estado atualizado"
+          },
+          "example": {
+            "eventType": "play",
+            "timestamp": 1705339800000,
+            "state": {
+              "id": "550e8400-e29b-41d4-a716-446655440010",
+              "roomId": "550e8400-e29b-41d4-a716-446655440001",
+              "videoPosition": 45.3,
+              "isPlaying": true,
+              "videoDuration": 180.0,
+              "lastUpdated": "2025-01-15T16:30:00.000Z",
+              "updatedBy": "550e8400-e29b-41d4-a716-446655440000"
+            }
+          }
+        },
+        "sync-response": {
+          "description": "Resposta à solicitação de sincronização",
+          "payload": {
+            "id": "string (uuid)",
+            "roomId": "string (uuid)",
+            "videoPosition": "number - Posição calculada atual",
+            "isPlaying": "boolean",
+            "videoDuration": "number | null",
+            "lastUpdated": "string (ISO date)",
+            "updatedBy": "string (uuid)",
+            "syncTimestamp": "number - Timestamp exato da sincronização"
+          },
+          "example": {
+            "id": "550e8400-e29b-41d4-a716-446655440010",
+            "roomId": "550e8400-e29b-41d4-a716-446655440001",
+            "videoPosition": 127.8,
+            "isPlaying": true,
+            "videoDuration": 180.0,
+            "lastUpdated": "2025-01-15T16:30:00.000Z",
+            "updatedBy": "550e8400-e29b-41d4-a716-446655440000",
+            "syncTimestamp": 1705339802350
+          }
+        },
+        "heartbeat-response": {
+          "description": "Resposta ao heartbeat",
+          "payload": {
+            "timestamp": "number - Timestamp do servidor"
+          },
+          "example": {
+            "timestamp": 1705339800000
+          }
+        },
+        "error": {
+          "description": "Erro durante operação WebSocket",
+          "payload": {
+            "message": "string - Descrição do erro"
+          },
+          "examples": {
+            "auth_error": {
+              "message": "Authentication token required"
+            },
+            "room_access": {
+              "message": "Access denied to room"
+            },
+            "rate_limit": {
+              "message": "Rate limit exceeded"
+            },
+            "invalid_room": {
+              "message": "Room not found"
+            }
+          }
+        }
+      }
+    },
+    "x-integration-guide": {
+      "description": "Guia de integração para implementar streaming sincronizado",
+      "steps": {
+        "1-authentication": {
+          "title": "Autenticação",
+          "description": "Obtenha token JWT através do endpoint de login",
+          "endpoint": "POST /api/v1/auth/login"
+        },
+        "2-create-or-join-room": {
+          "title": "Criar ou entrar em sala",
+          "description": "Use os endpoints de rooms para criar/entrar em uma sala",
+          "endpoints": [
+            "POST /api/v1/rooms (criar)",
+            "POST /api/v1/rooms/{id}/join (entrar)"
+          ]
+        },
+        "3-websocket-connection": {
+          "title": "Conectar WebSocket",
+          "description": "Estabeleça conexão WebSocket para eventos em tempo real",
+          "example": "const socket = io('/streaming', { auth: { token: jwtToken } })"
+        },
+        "4-join-room-streaming": {
+          "title": "Entrar na sala via WebSocket",
+          "description": "Emita evento join-room para começar a receber sincronizações",
+          "example": "socket.emit('join-room', { roomId: 'uuid-da-sala' })"
+        },
+        "5-handle-sync": {
+          "title": "Processar sincronização inicial",
+          "description": "Escute evento room-state e sincronize player com estado atual",
+          "example": "socket.on('room-state', (state) => { player.seekTo(state.videoPosition); if (state.isPlaying) player.play(); })"
+        },
+        "6-send-video-events": {
+          "title": "Enviar eventos de controle",
+          "description": "Emita eventos quando usuário controlar o vídeo",
+          "events": [
+            "video-play",
+            "video-pause",
+            "video-seek"
+          ]
+        },
+        "7-receive-video-events": {
+          "title": "Receber eventos de outros usuários",
+          "description": "Escute eventos de outros participantes e sincronize player",
+          "events": [
+            "video-play",
+            "video-pause",
+            "video-seek"
+          ]
+        }
+      },
+      "best-practices": {
+        "debouncing": "Implemente debouncing para eventos de seek frequentes",
+        "error-handling": "Sempre escute eventos de erro e implemente reconexão automática",
+        "heartbeat": "Use heartbeat para detectar conexões perdidas",
+        "graceful-degradation": "Implemente fallback para caso WebSocket não funcione",
+        "performance": "Evite emitir muitos eventos por segundo para não sobrecarregar o servidor"
+      },
+      "example-flows": {
+        "new-participant": {
+          "description": "Fluxo quando novo participante entra",
+          "steps": [
+            "1. Usuário entra na sala via REST API",
+            "2. Conecta WebSocket e emite join-room",
+            "3. Recebe room-state com posição atual",
+            "4. Sincroniza player com estado recebido",
+            "5. Outros participantes recebem user-joined"
+          ]
+        },
+        "video-control": {
+          "description": "Fluxo de controle de vídeo",
+          "steps": [
+            "1. Usuário clica play/pause/seek no player",
+            "2. Frontend emite evento correspondente via WebSocket",
+            "3. Servidor valida permissão e atualiza estado",
+            "4. Servidor emite evento para outros participantes",
+            "5. Outros players sincronizam automaticamente"
+          ]
+        },
+        "reconnection": {
+          "description": "Fluxo de reconexão",
+          "steps": [
+            "1. Detecta desconexão WebSocket",
+            "2. Tenta reconectar automaticamente",
+            "3. Após reconectar, emite join-room novamente",
+            "4. Solicita sync para obter estado atual",
+            "5. Ressincroniza player"
+          ]
+        }
+      }
+    },
+    "x-rate-limits": {
+      "rest-api": {
+        "general": "200 requests per 15 minutes per IP",
+        "streaming": "500 requests per 5 minutes per IP"
+      },
+      "websocket": {
+        "events": "100 events per minute per user",
+        "connections": "Unlimited concurrent connections per user"
+      }
+    }
+   }
