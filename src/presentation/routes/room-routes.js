@@ -1,5 +1,4 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const RoomController = require('../controllers/room-controller');
 const { authenticateToken } = require('../middlewares/auth-middleware');
 const { ensureRoomHost, ensureRoomExists, ensureRoomAccess } = require('../middlewares/room-middleware');
@@ -13,28 +12,18 @@ const {
     paginationSchema
 } = require('../validators/room-validator');
 
+// Importa o rate limiter configurado
+const { roomCreationLimiter } = require('../../config/rate-limit');
+
 const router = express.Router();
 const roomController = new RoomController();
-
-// Rate limiting específico apenas para criação de salas
-const roomCreationLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hora
-    max: process.env.NODE_ENV === 'development' ? 50 : 10, // 50 em dev, 10 em prod
-    message: {
-        success: false,
-        message: 'Too many rooms created, please try again later.',
-        timestamp: new Date().toISOString()
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
 
 // Todas as rotas requerem autenticação
 router.use(authenticateToken);
 
 // Rotas de salas
 router.post('/',
-    roomCreationLimiter, // Rate limiting apenas na criação
+    roomCreationLimiter, // Rate limiting específico para criação
     validateSchema(createRoomSchema),
     roomController.createRoom.bind(roomController)
 );

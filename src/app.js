@@ -1,11 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // Middlewares
 const { errorHandler, notFoundHandler } = require('./presentation/middlewares/error-middleware');
+
+// Rate limiting configurado
+const { generalLimiter, authLimiter, streamingLimiter } = require('./config/rate-limit');
 
 // Routes
 const authRoutes = require('./presentation/routes/auth-routes');
@@ -14,43 +16,44 @@ const streamingRoutes = require('./presentation/routes/streaming-routes');
 
 const app = express();
 
+// Configuração de trust proxy ANTES de qualquer middleware de rate limiting
+// Isso é crucial para ambientes de produção com proxies/load balancers
+if (process.env.NODE_ENV === 'production') {
+    // Confia em todos os proxies - ajuste conforme sua infraestrutura
+    app.set('trust proxy', true);
+    
+    // Alternativas mais específicas (descomente conforme necessário):
+    // app.set('trust proxy', 1); // Confia apenas no primeiro proxy
+    // app.set('trust proxy', ['127.0.0.1', '::1']); // IPs específicos
+    // app.set('trust proxy', 'loopback'); // Apenas loopback
+} else {
+    // Em desenvolvimento, normalmente não há proxies
+    app.set('trust proxy', false);
+}
+
 // Configurações de segurança
-app.use(helmet());
+app.use(helmet({
+    // Configurações específicas para produção
+    ...(process.env.NODE_ENV === 'production' && {
+        hsts: {
+            maxAge: 31536000,
+            includeSubDomains: true,
+            preload: true
+        },
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                scriptSrc: ["'self'"],
+                imgSrc: ["'self'", "data:", "https:"],
+                connectSrc: ["'self'", "wss:", "ws:"],
+            },
+        },
+    })
+}));
 
-// Rate limiting geral
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 200, // máximo 200 requests por IP por janela
-    message: {
-        success: false,
-        message: 'Too many requests from this IP, please try again later.',
-        timestamp: new Date().toISOString()
-    }
-});
-
-app.use(limiter);
-
-// Rate limiting específico para auth
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 20, // máximo 20 tentativas de auth por IP por janela
-    message: {
-        success: false,
-        message: 'Too many authentication attempts, please try again later.',
-        timestamp: new Date().toISOString()
-    }
-});
-
-// Rate limiting específico para streaming
-const streamingLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 minutos
-    max: 500, // máximo 500 requests de streaming por IP por janela
-    message: {
-        success: false,
-        message: 'Too many streaming requests, please try again later.',
-        timestamp: new Date().toISOString()
-    }
-});
+// Rate limiting geral - aplicado APÓS a configuração de trust proxy
+app.use(generalLimiter);
 
 // CORS
 app.use(cors({
@@ -69,7 +72,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Request logging em desenvolvimento
 if (process.env.NODE_ENV === 'development') {
     app.use((req, res, next) => {
-        console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+        const forwarded = req.get('X-Forwarded-For');
+        const ip = req.ip;
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - IP: ${ip}${forwarded ? ` (Forwarded: ${forwarded})` : ''}`);
         next();
     });
 }
@@ -80,11 +85,17 @@ app.get('/health', (req, res) => {
         success: true,
         message: 'Streamhive API is running',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        // Informações úteis para debug em desenvolvimento
+        ...(process.env.NODE_ENV === 'development' && {
+            ip: req.ip,
+            forwarded: req.get('X-Forwarded-For'),
+            trustProxy: app.get('trust proxy')
+        })
     });
 });
 
-// API Routes
+// API Routes com rate limiting específico
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/streaming', streamingLimiter, streamingRoutes);
